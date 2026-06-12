@@ -193,7 +193,6 @@ function App() {
  )}
  <div className="sidebar-footer">
  <button className="settings-btn" onClick={() => { setShowSettings(true); setSidebarOpen(false) }}>⚙ 设置</button>
- <button className="theme-btn" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '☀ 浅⾊' : ' 深⾊'}</button>
  </div>
  </div>
  <div className="chat-container">
@@ -211,6 +210,7 @@ function App() {
  {currentSession && <button className="title-edit-btn" onClick={startEditTitle}>✎</button>}
  </>
  )}
+ <button className="theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? ' ' : ' '}</button>
  </div>
  <div className="messages" ref={messagesContainerRef} style={chatBg ? { backgroundImage: `url(${chatBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'local' } : {}}>
  {messages.map((msg, i) => (
@@ -225,27 +225,22 @@ function App() {
  </div>
  ) : (
  <>
- {msg.role === 'assistant' && (
- <div className="avatar">{aiAvatar ? <img src={aiAvatar} alt="" /> : ' '}</div>
- )}
- {msg.role === 'user' && !loading && (
- <button className="edit-btn" onClick={() => startEdit(i)} title="编辑">✎</button>
- )}
- <div className={`bubble ${chatBg ? 'has-bg' : ''}`}>{msg.content}</div>
- {msg.role === 'user' && (
- <div className="avatar">{userAvatar ? <img src={userAvatar} alt="" /> : ' '}</div>
- )}
- {msg.role === 'assistant' && i === messages.length - 1 && !loading && (
- <button className="retry-btn" onClick={retry} title="重新⽣成">↻</button>
- )}
+ <div className="message-header">
+ <div className="avatar">{msg.role === 'assistant' ? (aiAvatar ? <img src={aiAvatar} alt="" /> : ' ') : (userAvatar ? <img src={userAvatar} alt="" /> : ' ')}</div>
+ {msg.role === 'user' && !loading && <button className="edit-btn" onClick={() => startEdit(i)} title="编辑">✎</button>}
+ {msg.role === 'assistant' && i === messages.length - 1 && !loading && <button className="retry-btn" onClick={retry} title="重新⽣成">↻</button>}
+ </div>
+ <div className={`bubble ${msg.role} ${chatBg ? 'has-bg' : ''}`}>{msg.content}</div>
  </>
  )}
  </div>
  ))}
  {loading && (
  <div className="message assistant">
+ <div className="message-header">
  <div className="avatar">{aiAvatar ? <img src={aiAvatar} alt="" /> : ' '}</div>
- <div className={`bubble thinking ${chatBg ? 'has-bg' : ''}`}>思考中...</div>
+ </div>
+ <div className={`bubble assistant thinking ${chatBg ? 'has-bg' : ''}`}>思考中...</div>
  </div>
  )}
  <div ref={messagesEndRef} />
