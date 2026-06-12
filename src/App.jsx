@@ -17,11 +17,23 @@ function App() {
   const [editText, setEditText] = useState('')
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleText, setTitleText] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const messagesEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
 
   useEffect(() => { loadSessions(); loadSettings(); document.documentElement.setAttribute('data-theme', theme) }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('theme', theme) }, [theme])
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const handleScroll = () => setShowScrollTop(container.scrollTop > 300)
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
 
   async function loadSessions() {
     const res = await fetch(`${API}/sessions`)
@@ -79,71 +91,50 @@ function App() {
     finally { setLoading(false) }
   }
 
-  function startEdit(idx) {
-    setEditingIdx(idx)
-    setEditText(messages[idx].content)
-  }
-  function cancelEdit() {
-    setEditingIdx(null)
-    setEditText('')
-  }
+  function startEdit(idx) { setEditingIdx(idx); setEditText(messages[idx].content) }
+  function cancelEdit() { setEditingIdx(null); setEditText('') }
   async function submitEdit() {
     if (!editText.trim() || loading || !currentSession) return
     const text = editText.trim()
     const keepCount = editingIdx
-
-    setEditingIdx(null)
-    setEditText('')
+    setEditingIdx(null); setEditText('')
     setMessages(prev => [...prev.slice(0, editingIdx), { role: 'user', content: text }])
     setLoading(true)
-
     try {
-      await fetch(`${API}/messages/truncate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: currentSession.id, keep_count: keepCount })
-      })
-      const res = await fetch(`${API}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: currentSession.id, message: text })
-      })
+      await fetch(`${API}/messages/truncate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: currentSession.id, keep_count: keepCount }) })
+      const res = await fetch(`${API}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: currentSession.id, message: text }) })
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
       if (data.title) {
         setCurrentSession(prev => ({ ...prev, name: data.title }))
         setSessions(prev => prev.map(s => s.id === currentSession.id ? { ...s, name: data.title } : s))
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: '发送失败，请重试' }])
-    } finally {
-      setLoading(false)
-    }
+    } catch { setMessages(prev => [...prev, { role: 'assistant', content: '发送失败，请重试' }]) }
+    finally { setLoading(false) }
   }
 
-  function startEditTitle() {
-    if (!currentSession) return
-    setEditingTitle(true)
-    setTitleText(currentSession.name || '')
-  }
-  function cancelEditTitle() {
-    setEditingTitle(false)
-    setTitleText('')
-  }
+  function startEditTitle() { if (!currentSession) return; setEditingTitle(true); setTitleText(currentSession.name || '') }
+  function cancelEditTitle() { setEditingTitle(false); setTitleText('') }
   async function saveTitle() {
     if (!titleText.trim() || !currentSession) return
-    const newName = titleText.trim()
-    setEditingTitle(false)
+    const newName = titleText.trim(); setEditingTitle(false)
     try {
-      await fetch(`${API}/sessions/${currentSession.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName })
-      })
+      await fetch(`${API}/sessions/${currentSession.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName }) })
       setCurrentSession(prev => ({ ...prev, name: newName }))
       setSessions(prev => prev.map(s => s.id === currentSession.id ? { ...s, name: newName } : s))
     } catch {}
   }
+
+  async function searchMessages(query) {
+    if (!query.trim()) { setSearchResults([]); setIsSearching(false); return }
+    setIsSearching(true)
+    try {
+      const res = await fetch(`${API}/messages/search?q=${encodeURIComponent(query.trim())}`)
+      setSearchResults(await res.json())
+    } catch { setSearchResults([]) }
+  }
+  function clearSearch() { setSearchQuery(''); setSearchResults([]); setIsSearching(false) }
+  function scrollToTop() { messagesContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' }) }
 
   return (
     <div className="app">
@@ -153,14 +144,33 @@ function App() {
           <span>对话列表</span>
           <button className="new-chat-btn" onClick={createSession}>+</button>
         </div>
-        <div className="session-list">
-          {sessions.map(s => (
-            <div key={s.id} className={`session-item ${currentSession?.id === s.id ? 'active' : ''}`} onClick={() => selectSession(s)}>
-              <span className="session-name">{s.name}</span>
-              <button className="delete-btn" onClick={e => deleteSession(e, s.id)}>×</button>
-            </div>
-          ))}
+        <div className="search-box">
+          <input className="search-input" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') searchMessages(searchQuery) }} placeholder="搜索聊天记录..." />
+          {searchQuery && <button className="search-clear" onClick={clearSearch}>✕</button>}
         </div>
+        {isSearching ? (
+          <div className="session-list">
+            {searchResults.length === 0 ? (
+              <div className="no-results">没有找到相关内容</div>
+            ) : (
+              searchResults.map((r, i) => (
+                <div key={i} className="search-result-item" onClick={() => { selectSession({ id: r.session_id, name: r.session_name }); clearSearch() }}>
+                  <div className="search-result-title">{r.session_name}</div>
+                  <div className="search-result-preview">{r.role === 'user' ? '你: ' : 'AI: '}{r.content.length > 50 ? r.content.substring(0, 50) + '...' : r.content}</div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="session-list">
+            {sessions.map(s => (
+              <div key={s.id} className={`session-item ${currentSession?.id === s.id ? 'active' : ''}`} onClick={() => selectSession(s)}>
+                <span className="session-name">{s.name}</span>
+                <button className="delete-btn" onClick={e => deleteSession(e, s.id)}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="sidebar-footer">
           <button className="settings-btn" onClick={() => { setShowSettings(true); setSidebarOpen(false) }}>⚙ 设置</button>
           <button className="theme-btn" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '☀ 浅色' : '🌙 深色'}</button>
@@ -182,7 +192,7 @@ function App() {
             </>
           )}
         </div>
-        <div className="messages">
+        <div className="messages" ref={messagesContainerRef}>
           {messages.map((msg, i) => (
             <div key={i} className={`message ${msg.role}`}>
               {msg.role === 'user' && editingIdx === i ? (
@@ -209,6 +219,7 @@ function App() {
           {loading && <div className="message assistant"><div className="bubble thinking">思考中...</div></div>}
           <div ref={messagesEndRef} />
         </div>
+        {showScrollTop && <button className="scroll-top-btn" onClick={scrollToTop}>↑</button>}
         <div className="input-area">
           <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }}} placeholder="输入消息..." rows={1} />
           <button onClick={send} disabled={loading || !input.trim()}>发送</button>
