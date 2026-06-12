@@ -210,7 +210,7 @@ function App() {
  {currentSession && <button className="title-edit-btn" onClick={startEditTitle}>✎</button>}
  </>
  )}
- <button className="theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? ' ' : ' '}</button>
+<button className="theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '浅' : '深'}</button>
  </div>
  <div className="messages" ref={messagesContainerRef} style={chatBg ? { backgroundImage: `url(${chatBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'local' } : {}}>
  {messages.map((msg, i) => (
