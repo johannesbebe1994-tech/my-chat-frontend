@@ -57,6 +57,19 @@ function App() {
     } catch { setMessages(prev => [...prev, { role: 'assistant', content: '发送失败，请重试' }]) }
     finally { setLoading(false) }
   }
+  async function retry() {
+    if (loading || messages.length < 2 || !currentSession) return
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
+    if (!lastUserMsg) return
+    setMessages(prev => prev.slice(0, prev.length - 1))
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: currentSession.id, message: lastUserMsg.content, is_retry: true }) })
+      const data = await res.json()
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
+    } catch { setMessages(prev => [...prev, { role: 'assistant', content: '重试失败' }]) }
+    finally { setLoading(false) }
+  }
 
   return (
     <div className="app">
@@ -85,7 +98,14 @@ function App() {
           <span className="chat-title">{currentSession?.name || '选择对话'}</span>
         </div>
         <div className="messages">
-          {messages.map((msg, i) => (<div key={i} className={`message ${msg.role}`}><div className="bubble">{msg.content}</div></div>))}
+          {messages.map((msg, i) => (
+            <div key={i} className={`message ${msg.role}`}>
+              <div className="bubble">{msg.content}</div>
+              {msg.role === 'assistant' && i === messages.length - 1 && !loading && (
+                <button className="retry-btn" onClick={retry} title="重新生成">↻</button>
+              )}
+            </div>
+          ))}
           {loading && <div className="message assistant"><div className="bubble thinking">思考中...</div></div>}
           <div ref={messagesEndRef} />
         </div>
