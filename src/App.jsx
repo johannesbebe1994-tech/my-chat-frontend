@@ -22,6 +22,8 @@ function App() {
  const [userAvatar, setUserAvatar] = useState(localStorage.getItem('user_avatar') || '')
  const [aiAvatar, setAiAvatar] = useState(localStorage.getItem('ai_avatar') || '')
  const [chatBg, setChatBg] = useState(localStorage.getItem('chat_bg') || '')
+ const [themeIconDark, setThemeIconDark] = useState(localStorage.getItem('theme_icon_dark') || '')
+ const [themeIconLight, setThemeIconLight] = useState(localStorage.getItem('theme_icon_light') || '')
  const messagesEndRef = useRef(null)
  const messagesContainerRef = useRef(null)
  useEffect(() => { loadSessions(); loadSettings(); document.documentElement.setAttribute('data-theme', theme) }, [])
@@ -131,6 +133,7 @@ function App() {
  }
  function clearSearch() { setSearchQuery(''); setSearchResults([]); setIsSearching(false) }
  function scrollToTop() { messagesContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' }) }
+ function scrollToBottom() { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }
  function handleImageUpload(e, key, setter, maxSize) {
  const file = e.target.files[0]
  if (!file) return
@@ -146,7 +149,7 @@ function App() {
  }
  canvas.width = w; canvas.height = h
  canvas.getContext('2d').drawImage(img, 0, 0, w, h)
- const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+ const dataUrl = canvas.toDataURL('image/png', 0.9)
  setter(dataUrl)
  localStorage.setItem(key, dataUrl)
  }
@@ -156,6 +159,7 @@ function App() {
  e.target.value = ''
  }
  function clearImage(key, setter) { setter(''); localStorage.removeItem(key) }
+ const themeIcon = theme === 'dark' ? themeIconLight : themeIconDark
  return (
  <div className="app">
  {sidebarOpen && <div className="overlay" onClick={() => setSidebarOpen(false)} />}
@@ -210,9 +214,11 @@ function App() {
  {currentSession && <button className="title-edit-btn" onClick={startEditTitle}>✎</button>}
  </>
  )}
-<button className="theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? '浅' : '深'}</button>
+ <button className="theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>
+ {themeIcon ? <img src={themeIcon} alt="" /> : <span className="theme-symbol">◐</span>}
+ </button>
  </div>
- <div className="messages" ref={messagesContainerRef} style={chatBg ? { backgroundImage: `url(${chatBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'local' } : {}}>
+ <div className="messages" ref={messagesContainerRef} style={chatBg ? { backgroundImage: `linear-gradient(var(--bg-overlay), var(--bg-overlay)), url(${chatBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'local' } : {}}>
  {messages.map((msg, i) => (
  <div key={i} className={`message ${msg.role}`}>
  {msg.role === 'user' && editingIdx === i ? (
@@ -230,7 +236,7 @@ function App() {
  {msg.role === 'user' && !loading && <button className="edit-btn" onClick={() => startEdit(i)} title="编辑">✎</button>}
  {msg.role === 'assistant' && i === messages.length - 1 && !loading && <button className="retry-btn" onClick={retry} title="重新⽣成">↻</button>}
  </div>
- <div className={`bubble ${msg.role} ${chatBg ? 'has-bg' : ''}`}>{msg.content}</div>
+ <div className={`bubble ${msg.role}`}>{msg.content}</div>
  </>
  )}
  </div>
@@ -240,14 +246,14 @@ function App() {
  <div className="message-header">
  <div className="avatar">{aiAvatar ? <img src={aiAvatar} alt="" /> : ' '}</div>
  </div>
- <div className={`bubble assistant thinking ${chatBg ? 'has-bg' : ''}`}>思考中...</div>
+ <div className="bubble assistant thinking">思考中...</div>
  </div>
  )}
  <div ref={messagesEndRef} />
  </div>
  {showScrollTop && <button className="scroll-top-btn" onClick={scrollToTop}>↑</button>}
  <div className="input-area">
- <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }}} placeholder="输⼊消息..." rows={1} />
+ <textarea value={input} onChange={e => setInput(e.target.value)} onFocus={scrollToBottom} placeholder="输⼊消息..." rows={1} />
  <button onClick={send} disabled={loading || !input.trim()}>发送</button>
  </div>
  </div>
@@ -283,6 +289,18 @@ function App() {
  <div className="bg-preview">{chatBg ? <img src={chatBg} alt="" /> : '⽆'}</div>
  <label className="upload-label">上传<input type="file" accept="image/*" hidden onChange={e => handleImageUpload(e, 'chat_bg', setChatBg, 800)} /></label>
  {chatBg && <button className="clear-btn" onClick={() => clearImage('chat_bg', setChatBg)}>清除</button>}
+ </div>
+ <div className="appearance-item">
+ <span>深⾊图标</span>
+ <div className="avatar-preview small">{themeIconDark ? <img src={themeIconDark} alt="" /> : '◐'}</div>
+ <label className="upload-label">上传<input type="file" accept="image/*" hidden onChange={e => handleImageUpload(e, 'theme_icon_dark', setThemeIconDark, 64)} /></label>
+ {themeIconDark && <button className="clear-btn" onClick={() => clearImage('theme_icon_dark', setThemeIconDark)}>清除</button>}
+ </div>
+ <div className="appearance-item">
+ <span>浅⾊图标</span>
+ <div className="avatar-preview small">{themeIconLight ? <img src={themeIconLight} alt="" /> : '◐'}</div>
+ <label className="upload-label">上传<input type="file" accept="image/*" hidden onChange={e => handleImageUpload(e, 'theme_icon_light', setThemeIconLight, 64)} /></label>
+ {themeIconLight && <button className="clear-btn" onClick={() => clearImage('theme_icon_light', setThemeIconLight)}>清除</button>}
  </div>
  </div>
  </div>
