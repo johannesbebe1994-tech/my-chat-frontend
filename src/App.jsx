@@ -175,7 +175,7 @@ function App() {
  <div className="chat-container">
  <div className="chat-header">
  <button className="menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
- <button className="home-btn" onClick={goHome}>⌂</button>
+ <button className="home-btn" onClick={goHome}>Home</button>
  {editingTitle ? (
  <div className="title-edit-area"><input className="title-edit-input" value={titleText} onChange={e => setTitleText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') cancelEditTitle() }} autoFocus /><button className="title-save-btn" onClick={saveTitle}>✓</button><button className="title-cancel-btn" onClick={cancelEditTitle}>✕</button></div>
  ) : (<><span className="chat-title">{currentSession?.name || '选择对话'}</span>{currentSession && <button className="title-edit-btn" onClick={startEditTitle}>✎</button>}</>)}
