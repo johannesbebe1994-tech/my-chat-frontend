@@ -249,6 +249,5 @@ overflow: hidden; background: var(--hover-bg); flex-shrink: 0; }
 .clear-btn { background: none; border: none; color: var(--text-muted); font-size: 
 12px; cursor: pointer; }
 .clear-btn:hover { color: #ff6b6b; }
-.bento-grid { height: calc(100dvh - 56px); }
 @media (min-width: 768px) { .sidebar { position: relative; left: 0; } .menu-btn { 
 display: none; } }
